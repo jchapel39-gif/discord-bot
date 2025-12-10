@@ -1,91 +1,37 @@
-import discord
-from discord.ext import commands
-import os
-import requests
-from xml.etree import ElementTree as ET
+NITRADO_API_TOKEN = os.getenv("dQBNhUFsi_nkkmdXOJpmZFbZQN-zTs0s6winJQZLr-HANBEI9RqSTgXHCvJ7Pkc6NwOLXTqUbUyfAvjYhI_71zLFPsMy3fzYNmjC")  # Ton API key
+NITRADO_SERVICE_ID = os.getenv("18100027")  # Ton service ID (un nombre)
 
-intents = discord.Intents.default()
-intents.message_content = True
+headers = {
+    "Authorization": f"Bearer {NITRADO_API_TOKEN}"
+}
 
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-FS_SERVER_URL = os.getenv("85.190.160.26:8080")
-FS_WEB_USER = os.getenv("bot")
-FS_WEB_PASS = os.getenv("159753")
-AUTH = (FS_WEB_USER, FS_WEB_PASS) if FS_WEB_USER and FS_WEB_PASS else None
-
-@bot.event
-async def on_ready():
-    print(f"{bot.user} est connecté !")
-
-@bot.command()
-async def ping(ctx):
-    await ctx.send("Pong !")
-
-async def get_xml(ctx):
+async def nitrado_control(action: str, ctx):
     try:
-        response = requests.get(f"{FS_SERVER_URL}/link.xml")
-        response.raise_for_status()
-        return ET.fromstring(response.content)
+        if action == "status":
+            url = f"https://api.nitrado.net/services/{NITRADO_SERVICE_ID}"
+            response = requests.get(url, headers=headers)
+            data = response.json()
+            status = data['data']['service']['status']
+            await ctx.send(f"Statut serveur FS25 : {status}")
+        else:
+            url = f"https://api.nitrado.net/services/{NITRADO_SERVICE_ID}/gameserver/{action}"
+            response = requests.post(url, headers=headers)
+            await ctx.send(f"Commande {action} envoyée au serveur FS25 !")
     except Exception as e:
-        await ctx.send(f"Erreur accès serveur FS : {str(e)} (vérifie URL/port/API activée)")
-        return None
+        await ctx.send(f"Erreur Nitrado API : {str(e)} (vérifie token/ID)")
 
 @bot.command()
-async def fs_joueurs(ctx):
-    root = await get_xml(ctx)
-    if not root:
-        return
-    players = [player.find('name').text for player in root.findall('.//player') if player.find('name') is not None]
-    if players:
-        await ctx.send("**Joueurs connectés :**\n" + "\n".join(players))
-    else:
-        await ctx.send("Aucun joueur connecté.")
-
-@bot.command()
-async def fs_mods(ctx):
-    root = await get_xml(ctx)
-    if not root:
-        return
-    mods = []
-    for mod in root.findall('.//mod'):
-        name = mod.find('name').text if mod.find('name') is not None else "Inconnu"
-        version = mod.find('version').text if mod.find('version') is not None else ""
-        mods.append(f"{name} (v{version})")
-    if mods:
-        message = "**Mods installés :**\n" + "\n".join(mods[:30])
-        if len(mods) > 30:
-            message += f"\n... et {len(mods)-30} de plus"
-        await ctx.send(message)
-    else:
-        await ctx.send("Aucun mod installé.")
-
-async def control_fs(action: str, ctx):
-    try:
-        url = f"{FS_SERVER_URL}/{action}"
-        response = requests.post(url, auth=AUTH)
-        response.raise_for_status()
-        await ctx.send(f"Serveur FS25 : {action} demandé !")
-    except Exception as e:
-        await ctx.send(f"Erreur {action} serveur : {str(e)} (mauvais auth ? serveur off ?)")
-
-@bot.command()
-async def fs_stop(ctx):
-    await control_fs("stop", ctx)
+async def fs_status(ctx):
+    await nitrado_control("status", ctx)
 
 @bot.command()
 async def fs_start(ctx):
-    await control_fs("start", ctx)
+    await nitrado_control("start", ctx)
+
+@bot.command()
+async def fs_stop(ctx):
+    await nitrado_control("stop", ctx)
 
 @bot.command()
 async def fs_restart(ctx):
-    await control_fs("restart", ctx)
-
-@bot.command()
-async def fs_help(ctx):
-    await ctx.send("Commandes FS25 :\n!fs_joueurs\n!fs_mods\n!fs_stop\n!fs_start\n!fs_restart")
-
-bot.run(os.getenv("DISCORD_TOKEN"))
-
-
-
+    await nitrado_control("restart", ctx)
