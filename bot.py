@@ -15,7 +15,6 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Variables d'environnement
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 NITRADO_API_TOKEN = os.getenv("NITRADO_API_TOKEN")
 NITRADO_SERVICE_ID = os.getenv("NITRADO_SERVICE_ID")
 REPORT_CHANNEL_ID = int(os.getenv("REPORT_CHANNEL_ID", "0"))
@@ -25,19 +24,13 @@ FTP_HOST = os.getenv("FTP_HOST")
 FTP_PORT = int(os.getenv("FTP_PORT", 21))
 FTP_USER = os.getenv("FTP_USER")
 FTP_PASS = os.getenv("FTP_PASS")
-SAVE_SLOT = os.getenv("SAVE_SLOT", "1")  # ex. "1" pour /savegame1/
+SAVE_SLOT = os.getenv("SAVE_SLOT", "1")  # ex. "1" pour SAUVEGARDE 1
 
 # Headers Nitrado
 headers = {"Authorization": f"Bearer {NITRADO_API_TOKEN}"}
 
 # Fichier pour stocker les derniers mods vus
 LAST_MODS_FILE = "last_mods.json"
-
-@bot.event
-async def on_ready():
-    print(f"{bot.user} est connecté ! Rapport quotidien FS25 activé.")
-    if not daily_report.is_running():
-        daily_report.start()
 
 @bot.command()
 async def ping(ctx):
@@ -109,7 +102,9 @@ async def get_save_info():
         ftp = ftplib.FTP()
         ftp.connect(FTP_HOST, FTP_PORT)
         ftp.login(FTP_USER, FTP_PASS)
-       save_path = f"../SAUVEGARDE {SAVE_SLOT}/"
+        
+        # Chemin corrigé : remonte d'un dossier depuis /mods/ puis va dans SAUVEGARDE
+        save_path = f"../SAUVEGARDE {SAVE_SLOT}/"
         ftp.cwd(save_path)
         
         # farms.xml
@@ -146,7 +141,7 @@ async def get_save_info():
             'total_money': total_money
         }
     except ftplib.all_errors as ftp_err:
-        return f"Erreur FTP : {str(ftp_err)}"
+        return f"Erreur FTP : {str(ftp_err)} (mauvais chemin ? Essaie ../../ si ../ ne marche pas)"
     except ET.ParseError:
         return "Erreur parsing XML : Sauvegarde en cours ? Réessaie dans 5 min."
     except Exception as e:
@@ -240,6 +235,4 @@ async def fs_help(ctx):
         "Rapport automatique tous les jours à 9h avec statut, mods et savegame !"
     )
 
-bot.run(DISCORD_TOKEN)
-
-
+bot.run(os.getenv("DISCORD_TOKEN"))
