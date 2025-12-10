@@ -9,7 +9,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-FS_SERVER_URL = os.getenv("85.190.160.26:11900")
+FS_SERVER_URL = os.getenv("85.190.160.26:8080")
 FS_WEB_USER = os.getenv("admin")
 FS_WEB_PASS = os.getenv("S6kby6Kz")
 AUTH = (FS_WEB_USER, FS_WEB_PASS) if FS_WEB_USER and FS_WEB_PASS else None
@@ -86,4 +86,5 @@ async def fs_help(ctx):
     await ctx.send("Commandes FS25 :\n!fs_joueurs\n!fs_mods\n!fs_stop\n!fs_start\n!fs_restart")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
