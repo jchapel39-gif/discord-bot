@@ -73,7 +73,8 @@ async def scrape_new_mods():
         for item in mod_items:
             title_elem = item.find('h3')
             link_elem = item.find('a', href=True)
-            date_elem = item.find('span', class_='date') or item.find(text=lambda t: 'ago' in t or 'Today' in t or 'Yesterday' in t)
+            # Correction : 'string' au lieu de 'text'
+            date_elem = item.find('span', class_='date') or item.find(string=lambda t: 'ago' in t or 'Today' in t or 'Yesterday' in t if t else False)
             
             if title_elem and link_elem:
                 title = title_elem.text.strip()
@@ -155,3 +156,4 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
