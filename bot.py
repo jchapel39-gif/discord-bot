@@ -118,30 +118,43 @@ async def send_report():
     status = await get_nitrado_status()
     new_mods = await scrape_new_mods()
     
-    report = (
-        f"**Rapport FS25 - {datetime.now().strftime('%d/%m/%Y à %H:%M')}**\n\n"
-        f"**Serveur Nitrado**\n{status}\n\n"
-        f"**Nouveaux mods sur ModHub officiel** ({len(new_mods)} aujourd'hui) :\n"
+    # Embed Discord thématique
+    embed = discord.Embed(
+        title="**Rapport Quotidien FS25 🌾🚜**",
+        description=f"Rapport du {datetime.now().strftime('%d/%m/%Y à %H:%M')} – Tout va bien à la ferme !",
+        color=0x568A3B  # Vert champ
     )
-    for mod in new_mods:
-        report += mod + "\n\n"
     
-    await channel.send(report)
-    return True
-
-# Rapport quotidien à 9h (UTC)
-@tasks.loop(time=time(hour=9, minute=0))  # ← Utilisation de l'import time
-async def daily_report():
-    await send_report()
-
-@bot.command()
-async def test_report(ctx):
-    await ctx.send("Génération du rapport de test en cours... 🌾")
-    success = await send_report()
-    if success:
-        await ctx.send("Rapport envoyé dans le channel configuré !")
+    # Champ Statut Serveur
+    embed.add_field(
+        name="🚜 Statut du Serveur Nitrado",
+        value=status,
+        inline=False
+    )
+    
+    # Champ Nouveaux Mods
+    if new_mods and not new_mods[0].startswith("Aucun") and not new_mods[0].startswith("Erreur"):
+        mods_text = "\n\n".join(new_mods[:10])  # Limite à 10 mods max
+        embed.add_field(
+            name=f"🌱 Nouveaux Mods sur ModHub Officiel ({len(new_mods)} aujourd'hui)",
+            value=mods_text or "Aucun nouveau mod détecté.",
+            inline=False
+        )
     else:
-        await ctx.send("Erreur lors de l'envoi (vérifie REPORT_CHANNEL_ID dans Portainer)")
+        embed.add_field(
+            name="🌱 Nouveaux Mods sur ModHub Officiel",
+            value=new_mods[0] if new_mods else "Aucun nouveau mod.",
+            inline=False
+        )
+    
+    # Thumbnail (un beau tracteur FS25)
+    embed.set_thumbnail(url="https://farmingsimulator22mods.com/wp-content/uploads/2025/12/new-holland-8340-v1-0-0-1-fs25-1.jpg")
+    
+    # Footer
+    embed.set_footer(text="Bot FS25 • Prochain rapport demain à 9h")
+    
+    await channel.send(embed=embed)
+    return True
 
 @bot.command()
 async def fs_help(ctx):
@@ -156,4 +169,5 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
