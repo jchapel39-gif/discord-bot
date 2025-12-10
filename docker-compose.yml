@@ -5,5 +5,4 @@ services:
     restart: unless-stopped
     environment:
       DISCORD_TOKEN:
-      NITRADO_API_TOKEN:
-      NITRADO_SERVICE_ID:
+      REPORT_CHANNEL_ID:
