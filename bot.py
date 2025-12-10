@@ -41,14 +41,13 @@ async def nitrado_control(action: str, ctx):
             status = data['data']['service']['status'].capitalize()
             await ctx.send(f"**Statut du serveur FS25** : {status}")
         else:
-            # Endpoint corrigé : /gameserver/restart (directement sous /services/{id})
             url = f"https://api.nitrado.net/services/{NITRADO_SERVICE_ID}/gameserver/{action}"
             response = requests.post(url, headers=headers)
             response.raise_for_status()
             await ctx.send(f"Commande **{action.upper()}** envoyée au serveur FS25 ! 🌾")
     except requests.exceptions.HTTPError as http_err:
-        if http_err.response.status_code == 404:
-            await ctx.send("Erreur 404 : Endpoint API invalide (vérifie ta clé API a les bons scopes pour gameserver control)")
+        if http_err.response and http_err.response.status_code == 404:
+            await ctx.send("Erreur 404 : Endpoint ou permission manquante (vérifie les scopes de ta clé API)")
         else:
             await ctx.send(f"Erreur API Nitrado : {http_err} (vérifie token/ID ou scopes)")
     except Exception as e:
@@ -65,7 +64,7 @@ async def fs_start(ctx):
 
 @bot.command()
 async def fs_stop(ctx):
-    await to nitrado_control("stop", ctx)
+    await nitrado_control("stop", ctx)   # ← Corrigé ici !
 
 @bot.command()
 async def fs_restart(ctx):
