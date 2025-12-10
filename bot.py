@@ -9,9 +9,10 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-FS_SERVER_URL = "85.190.160.26:11900"  # Remplace par l'IP/port de ton serveur FS
-FS_WEB_USER = "admin"                  # Username de l'interface web
-FS_WEB_PASS = "S6kby6Kz"                # Mot de passe de l'interface web
+FS_SERVER_URL = os.getenv("FS_SERVER_URL", "http://localhost:8080")
+FS_WEB_USER = os.getenv("FS_WEB_USER")
+FS_WEB_PASS = os.getenv("FS_WEB_PASS")
+AUTH = (FS_WEB_USER, FS_WEB_PASS) if FS_WEB_USER and FS_WEB_PASS else None
 
 @bot.event
 async def on_ready():
@@ -21,60 +22,67 @@ async def on_ready():
 async def ping(ctx):
     await ctx.send("Pong !")
 
-# Liste des joueurs
+async def get_xml(ctx):
+    try:
+        response = requests.get(f"{FS_SERVER_URL}/link.xml")
+        response.raise_for_status()
+        return ET.fromstring(response.content)
+    except Exception as e:
+        await ctx.send(f"Erreur accès serveur FS : {str(e)} (vérifie URL/port/API activée)")
+        return None
+
 @bot.command()
 async def fs_joueurs(ctx):
-    try:
-        response = requests.get(f"{FS_SERVER_URL}/link.xml")
-        response.raise_for_status()
-        root = ET.fromstring(response.content)
-        players = [player.find('name').text for player in root.findall('.//player')]
-        if players:
-            await ctx.send("**Joueurs connectés :**\n" + "\n".join(players))
-        else:
-            await ctx.send("Aucun joueur connecté.")
-    except Exception as e:
-        await ctx.send(f"Erreur : {str(e)} (serveur FS inaccessible ?)")
+    root = await get_xml(ctx)
+    if not root:
+        return
+    players = [player.find('name').text for player in root.findall('.//player') if player.find('name') is not None]
+    if players:
+        await ctx.send("**Joueurs connectés :**\n" + "\n".join(players))
+    else:
+        await ctx.send("Aucun joueur connecté.")
 
-# Liste des mods
 @bot.command()
 async def fs_mods(ctx):
-    try:
-        response = requests.get(f"{FS_SERVER_URL}/link.xml")
-        response.raise_for_status()
-        root = ET.fromstring(response.content)
-        mods = [f"{mod.find('name').text} (v{mod.find('version').text})" for mod in root.findall('.//mod')]
-        if mods:
-            await ctx.send("**Mods installés :**\n" + "\n".join(mods[:20]) + ("\n... et plus" if len(mods)>20 else ""))
-        else:
-            await ctx.send("Aucun mod installé.")
-    except Exception as e:
-        await ctx.send(f"Erreur : {str(e)}")
+    root = await get_xml(ctx)
+    if not root:
+        return
+    mods = []
+    for mod in root.findall('.//mod'):
+        name = mod.find('name').text if mod.find('name') is not None else "Inconnu"
+        version = mod.find('version').text if mod.find('version') is not None else ""
+        mods.append(f"{name} (v{version})")
+    if mods:
+        message = "**Mods installés :**\n" + "\n".join(mods[:30])
+        if len(mods) > 30:
+            message += f"\n... et {len(mods)-30} de plus"
+        await ctx.send(message)
+    else:
+        await ctx.send("Aucun mod installé.")
 
-# Contrôle du serveur (stop/start/restart)
-async def control_server(action: str, ctx):
+async def control_fs(action: str, ctx):
     try:
-        auth = (FS_WEB_USER, FS_WEB_PASS)
-        if action == "stop":
-            requests.post(f"{FS_SERVER_URL}/stop", auth=auth)
-        elif action == "start":
-            requests.post(f"{FS_SERVER_URL}/start", auth=auth)
-        elif action == "restart":
-            requests.post(f"{FS_SERVER_URL}/restart", auth=auth)
-        await ctx.send(f"Serveur FS : {action} demandé !")
+        url = f"{FS_SERVER_URL}/{action}"
+        response = requests.post(url, auth=AUTH)
+        response.raise_for_status()
+        await ctx.send(f"Serveur FS25 : {action} demandé !")
     except Exception as e:
-        await ctx.send(f"Erreur contrôle : {str(e)} (mauvais auth ?)")
+        await ctx.send(f"Erreur {action} serveur : {str(e)} (mauvais auth ? serveur off ?)")
 
 @bot.command()
 async def fs_stop(ctx):
-    await control_server("stop", ctx)
+    await control_fs("stop", ctx)
 
 @bot.command()
 async def fs_start(ctx):
-    await control_server("start", ctx)
+    await control_fs("start", ctx)
 
 @bot.command()
 async def fs_restart(ctx):
-    await control_server("restart", ctx)
+    await control_fs("restart", ctx)
+
+@bot.command()
+async def fs_help(ctx):
+    await ctx.send("Commandes FS25 :\n!fs_joueurs\n!fs_mods\n!fs_stop\n!fs_start\n!fs_restart")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
