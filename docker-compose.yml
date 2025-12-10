@@ -3,7 +3,3 @@ services:
     build: .
     container_name: discord-bot
     restart: unless-stopped
-    environment:
-      DISCORD_TOKEN:
-      NITRADO_API_TOKE:
-      NITRADO_SERVICE_ID:
