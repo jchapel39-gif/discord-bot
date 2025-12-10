@@ -1,25 +1,56 @@
-NITRADO_API_TOKEN = os.getenv("dQBNhUFsi_nkkmdXOJpmZFbZQN-zTs0s6winJQZLr-HANBEI9RqSTgXHCvJ7Pkc6NwOLXTqUbUyfAvjYhI_71zLFPsMy3fzYNmjC")  # Ton API key
-NITRADO_SERVICE_ID = os.getenv("18100027")  # Ton service ID (un nombre)
+import discord
+from discord.ext import commands
+import os
+import requests
 
+# Intents nécessaires
+intents = discord.Intents.default()
+intents.message_content = True
+
+# Préfixe du bot
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Variables Nitrado (à définir dans Portainer > Environment variables)
+NITRADO_API_TOKEN = os.getenv("NITRADO_API_TOKEN")      # Ta clé API Nitrado
+NITRADO_SERVICE_ID = os.getenv("NITRADO_SERVICE_ID")    # L'ID de ton serveur FS25 (ex: 71422589)
+
+# Headers pour les requêtes API Nitrado
 headers = {
     "Authorization": f"Bearer {NITRADO_API_TOKEN}"
 }
 
+@bot.event
+async def on_ready():
+    print(f"{bot.user} est connecté ! Prêt à gérer la ferme FS25 sur Nitrado.")
+
+@bot.command()
+async def ping(ctx):
+    await ctx.send("Pong ! Le bot est en ligne 🚜")
+
 async def nitrado_control(action: str, ctx):
+    if not NITRADO_API_TOKEN or not NITRADO_SERVICE_ID:
+        await ctx.send("Erreur : Token API ou Service ID Nitrado manquant. Contacte l'admin.")
+        return
+
     try:
         if action == "status":
             url = f"https://api.nitrado.net/services/{NITRADO_SERVICE_ID}"
             response = requests.get(url, headers=headers)
+            response.raise_for_status()
             data = response.json()
-            status = data['data']['service']['status']
-            await ctx.send(f"Statut serveur FS25 : {status}")
+            status = data['data']['service']['status'].capitalize()
+            await ctx.send(f"**Statut du serveur FS25** : {status}")
         else:
             url = f"https://api.nitrado.net/services/{NITRADO_SERVICE_ID}/gameserver/{action}"
             response = requests.post(url, headers=headers)
-            await ctx.send(f"Commande {action} envoyée au serveur FS25 !")
+            response.raise_for_status()
+            await ctx.send(f"Commande **{action.upper()}** envoyée au serveur FS25 ! 🌾")
+    except requests.exceptions.HTTPError as http_err:
+        await ctx.send(f"Erreur API Nitrado : {http_err} (vérifie token/ID)")
     except Exception as e:
-        await ctx.send(f"Erreur Nitrado API : {str(e)} (vérifie token/ID)")
+        await ctx.send(f"Erreur inattendue : {str(e)}")
 
+# Commandes Nitrado
 @bot.command()
 async def fs_status(ctx):
     await nitrado_control("status", ctx)
@@ -35,3 +66,20 @@ async def fs_stop(ctx):
 @bot.command()
 async def fs_restart(ctx):
     await nitrado_control("restart", ctx)
+
+@bot.command()
+async def fs_help(ctx):
+    help_text = (
+        "**Commandes Farming Simulator 2025 (Nitrado)**\n\n"
+        "`!ping` → Teste si le bot répond\n"
+        "`!fs_status` → Affiche l'état actuel du serveur\n"
+        "`!fs_start` → Démarre le serveur\n"
+        "`!fs_stop` → Arrête le serveur\n"
+        "`!fs_restart` → Redémarre le serveur\n"
+        "`!fs_help` → Affiche ce message\n\n"
+        "Mods et joueurs : gère-les via le panel Nitrado → Admin Web Interface"
+    )
+    await ctx.send(help_text)
+
+# Lancement du bot
+bot.run(os.getenv("DISCORD_TOKEN"))
