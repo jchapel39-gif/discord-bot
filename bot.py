@@ -41,13 +41,16 @@ async def nitrado_control(action: str, ctx):
             status = data['data']['service']['status'].capitalize()
             await ctx.send(f"**Statut du serveur FS25** : {status}")
         else:
-            # URL corrigée : .net au lieu de .list
+            # Endpoint corrigé : /gameserver/restart (directement sous /services/{id})
             url = f"https://api.nitrado.net/services/{NITRADO_SERVICE_ID}/gameserver/{action}"
             response = requests.post(url, headers=headers)
             response.raise_for_status()
             await ctx.send(f"Commande **{action.upper()}** envoyée au serveur FS25 ! 🌾")
     except requests.exceptions.HTTPError as http_err:
-        await ctx.send(f"Erreur API Nitrado : {http_err} (vérifie token/ID ou scopes)")
+        if http_err.response.status_code == 404:
+            await ctx.send("Erreur 404 : Endpoint API invalide (vérifie ta clé API a les bons scopes pour gameserver control)")
+        else:
+            await ctx.send(f"Erreur API Nitrado : {http_err} (vérifie token/ID ou scopes)")
     except Exception as e:
         await ctx.send(f"Erreur inattendue : {str(e)}")
 
@@ -62,7 +65,7 @@ async def fs_start(ctx):
 
 @bot.command()
 async def fs_stop(ctx):
-    await nitrado_control("stop", ctx)
+    await to nitrado_control("stop", ctx)
 
 @bot.command()
 async def fs_restart(ctx):
@@ -84,7 +87,7 @@ async def fs_joueurs(ctx):
         slots = data.get('slots', 16)
 
         await ctx.send(f"**Joueurs connectés sur le serveur FS25** : {current}/{slots}\n"
-                       "(Noms non disponibles via l'API pour Farming Simulator – visible dans le panel Nitrado ou en jeu)")
+                       "(Noms non disponibles via l'API – visible dans le panel Nitrado ou en jeu)")
     except Exception as e:
         await ctx.send(f"Erreur récupération joueurs : {str(e)}")
 
