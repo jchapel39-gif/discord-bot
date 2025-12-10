@@ -4,8 +4,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import json
-from datetime import datetime, timedelta
-import asyncio
+from datetime import datetime
 
 # Intents
 intents = discord.Intents.default()
@@ -16,12 +15,12 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Variables Nitrado + Discord
 NITRADO_API_TOKEN = os.getenv("NITRADO_API_TOKEN")
 NITRADO_SERVICE_ID = os.getenv("NITRADO_SERVICE_ID")
-REPORT_CHANNEL_ID = int(os.getenv("REPORT_CHANNEL_ID", 0))  # ID du channel pour le rapport quotidien (obligatoire !)
+REPORT_CHANNEL_ID = int(os.getenv("REPORT_CHANNEL_ID", 0))  # ID du channel pour les rapports (obligatoire)
 
 # Headers Nitrado
 headers = {"Authorization": f"Bearer {NITRADO_API_TOKEN}"}
 
-# Fichier pour stocker les derniers mods vus
+# Fichier pour stocker les derniers mods vus (IDs)
 LAST_MODS_FILE = "last_mods.json"
 
 @bot.event
@@ -52,12 +51,12 @@ async def get_nitrado_status():
 @bot.command()
 async def fs_status(ctx):
     status = await get_nitrado_status()
-    await ctx.send(status)
+    await ctx.send(f"**Statut du serveur FS25**\n{status}")
 
 @bot.command()
 async def fs_joueurs(ctx):
     status = await get_nitrado_status()
-    await ctx.send(status)  # Même fonction pour simplifier
+    await ctx.send(f"**Joueurs connectés sur le serveur FS25**\n{status.split('Joueurs')[1] if 'Joueurs' in status else status}")
 
 async def scrape_new_mods():
     url = "https://www.farming-simulator.com/mods.php?lang=en&country=fr&title=fs2025&filter=newest"
@@ -74,58 +73,75 @@ async def scrape_new_mods():
         for item in mod_items:
             title_elem = item.find('h3')
             link_elem = item.find('a', href=True)
-            date_elem = item.find('span', class_='date')
+            date_elem = item.find('span', class_='date') or item.find(text=lambda t: 'ago' in t or 'Today' in t or 'Yesterday' in t)
             
-            if title_elem and link_elem and date_elem:
+            if title_elem and link_elem:
                 title = title_elem.text.strip()
                 link = "https://www.farming-simulator.com" + link_elem['href']
-                date_str = date_elem.text.strip()
-                mod_id = link.split('mod_id=')[1].split('&')[0] if 'mod_id=' in link else ""
+                mod_id = link.split('mod_id=')[1].split('&')[0] if 'mod_id=' in link else None
+                date_str = date_elem.text.strip() if date_elem else "Date inconnue"
                 
-                # Détecter si nouveau (par ID ou date récente)
                 if mod_id and mod_id not in last_seen:
                     new_mods.append(f"**{title}** ({date_str})\n{link}")
                     last_seen.add(mod_id)
         
-        save_last_mods(last_seen)
-        return new_mods if new_mods else ["Aucun nouveau mod aujourd'hui sur le ModHub officiel."]
+        if new_mods:
+            save_last_mods(last_seen)
+        return new_mods if new_mods else ["Aucun nouveau mod détecté aujourd'hui sur le ModHub officiel."]
     except Exception as e:
-        return [f"Erreur scraping ModHub : {str(e)}"]
+        return [f"Erreur scraping ModHub : {str(e)} (site inaccessible ou structure changée)"]
 
 def load_last_mods():
     if os.path.exists(LAST_MODS_FILE):
-        with open(LAST_MODS_FILE, 'r') as f:
-            return set(json.load(f))
+        try:
+            with open(LAST_MODS_FILE, 'r') as f:
+                return set(json.load(f))
+        except:
+            return set()
     return set()
 
 def save_last_mods(mods_set):
     with open(LAST_MODS_FILE, 'w') as f:
         json.dump(list(mods_set), f)
 
-# Rapport quotidien à 9h (heure du serveur)
-@tasks.loop(time=datetime.time(hour=9, minute=0))  # 9h00 UTC (ajuste si besoin avec tz)
-async def daily_report():
+async def send_report():
     if REPORT_CHANNEL_ID == 0:
-        print("REPORT_CHANNEL_ID manquant – rapport ignoré.")
-        return
+        print("REPORT_CHANNEL_ID manquant – impossible d'envoyer le rapport.")
+        return False
     
     channel = bot.get_channel(REPORT_CHANNEL_ID)
     if not channel:
         print("Channel rapport introuvable.")
-        return
+        return False
     
     status = await get_nitrado_status()
     new_mods = await scrape_new_mods()
     
     report = (
-        f"**Rapport quotidien FS25 - {datetime.now().strftime('%d/%m/%Y')}**\n\n"
+        f"**Rapport FS25 - {datetime.now().strftime('%d/%m/%Y à %H:%M')}**\n\n"
         f"**Serveur Nitrado**\n{status}\n\n"
-        f"**Nouveaux mods sur ModHub officiel** ({len(new_mods)} aujourd'hui) :\n"
+        f"**Nouveaux mods sur ModHub officiel** ({len(new_mods) if isinstance(new_mods, list) else 0} aujourd'hui) :\n"
     )
     for mod in new_mods:
-        report += mod + "\n"
+        report += mod + "\n\n"
     
     await channel.send(report)
+    return True
+
+# Rapport quotidien à 9h (UTC – ajuste si ton serveur est en heure FR : ajoute tzinfo si besoin)
+@tasks.loop(time=datetime.time(hour=9, minute=0))
+async def daily_report():
+    await send_report()
+
+# Nouvelle commande pour tester le rapport immédiatement
+@bot.command()
+async def test_report(ctx):
+    await ctx.send("Génération du rapport de test en cours... 🌾")
+    success = await send_report()
+    if success:
+        await ctx.send("Rapport envoyé dans le channel configuré !")
+    else:
+        await ctx.send("Erreur lors de l'envoi (vérifie REPORT_CHANNEL_ID)")
 
 @bot.command()
 async def fs_help(ctx):
@@ -134,6 +150,7 @@ async def fs_help(ctx):
         "`!ping` → Test\n"
         "`!fs_status` → Statut serveur\n"
         "`!fs_joueurs` → Joueurs connectés\n"
+        "`!test_report` → Envoie un rapport de test immédiatement\n"
         "`!fs_help` → Ce message\n\n"
         "Rapport automatique tous les jours à 9h dans le channel configuré !"
     )
