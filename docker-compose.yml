@@ -8,3 +8,8 @@ services:
       REPORT_CHANNEL_ID:
       NITRADO_API_TOKEN:
       NITRADO_SERVICE_ID:
+      FTP_HOST:
+      FTP_PORT:
+      FTP_USER:
+      FTP_PASS:
+      SAVE_SLOT:
