@@ -12,4 +12,3 @@ services:
       FTP_PORT:
       FTP_USER:
       FTP_PASS:
-      SAVE_SLOT:
