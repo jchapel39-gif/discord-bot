@@ -103,33 +103,15 @@ async def get_save_info():
         ftp.connect(FTP_HOST, FTP_PORT)
         ftp.login(FTP_USER, FTP_PASS)
         
-        # Debug : lister le contenu de la racine FTP
-        print("=== Contenu de la racine FTP ===")
+        # Debug : listing racine FTP (dossier mods)
+        print("=== Contenu racine FTP (dossier mods) ===")
         ftp.dir()
-        print("=== Fin contenu FTP ===")
+        print("=== Fin contenu ===")
         
-        # Chemins possibles pour SAUVEGARDE (Nitrado varie souvent)
-        possible_paths = [
-            f"SAUVEGARDE {SAVE_SLOT}/",
-            f"../SAUVEGARDE {SAVE_SLOT}/",
-            f"../../SAUVEGARDE {SAVE_SLOT}/",
-            f"/SAUVEGARDE {SAVE_SLOT}/",
-            f"./SAUVEGARDE {SAVE_SLOT}/",
-        ]
-        
-        save_path = None
-        for path in possible_paths:
-            try:
-                ftp.cwd(path)
-                print(f"Chemin SAUVEGARDE trouvé : {path}")
-                save_path = path
-                break
-            except ftplib.error_perm:
-                continue
-        
-        if not save_path:
-            ftp.quit()
-            return "Dossier SAUVEGARDE non trouvé. Vérifie les logs Portainer pour le contenu FTP."
+        # Chemin corrigé : remonte du dossier mods vers le parent, puis dans SAUVEGARDE
+        save_path = f"../SAUVEGARDE {SAVE_SLOT}/"
+        ftp.cwd(save_path)
+        print(f"Accès réussi à {save_path}")
         
         # farms.xml
         farms_data = []
@@ -165,7 +147,7 @@ async def get_save_info():
             'total_money': total_money
         }
     except ftplib.all_errors as ftp_err:
-        return f"Erreur FTP : {str(ftp_err)}"
+        return f"Erreur FTP : {str(ftp_err)} (vérifie que SAVE_SLOT est correct et que SAUVEGARDE existe au parent)"
     except ET.ParseError:
         return "Erreur parsing XML : Sauvegarde en cours ? Réessaie dans 5 min."
     except Exception as e:
