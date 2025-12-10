@@ -104,7 +104,7 @@ async def get_save_info():
         ftp.login(FTP_USER, FTP_PASS)
         
         # Chemin corrigé : remonte d'un dossier depuis /mods/ puis va dans SAUVEGARDE
-        save_path = f"../SAUVEGARDE {SAVE_SLOT}/"
+        save_path = f"../../SAUVEGARDE {SAVE_SLOT}/"
         ftp.cwd(save_path)
         
         # farms.xml
@@ -236,3 +236,4 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
