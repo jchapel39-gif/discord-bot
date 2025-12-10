@@ -109,7 +109,7 @@ async def get_save_info():
         ftp = ftplib.FTP()
         ftp.connect(FTP_HOST, FTP_PORT)
         ftp.login(FTP_USER, FTP_PASS)
-        save_path = f"/savegame{SAVE_SLOT}/"
+        save_path = f"/SAUVEGARDE{SAVE_SLOT}/"
         ftp.cwd(save_path)
         
         # farms.xml
@@ -241,3 +241,4 @@ async def fs_help(ctx):
     )
 
 bot.run(DISCORD_TOKEN)
+
