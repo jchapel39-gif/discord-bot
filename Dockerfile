@@ -1,11 +1,4 @@
-FROM python:3.11-slim
-
-# Installe les outils de build (au cas où, même si wheels existent)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libffi-dev \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.12  # Au lieu de python:3.12-slim
 
 WORKDIR /app
 
