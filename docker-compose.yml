@@ -5,6 +5,5 @@ services:
     restart: unless-stopped
     environment:
       DISCORD_TOKEN:
-      FS_SERVER_URL:
-      FS_WEB_USER: 
-      FS_WEB_PASS:
+      NITRADO_API_TOKE:
+      NITRADO_SERVICE_ID:
