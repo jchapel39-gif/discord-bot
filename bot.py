@@ -5,8 +5,6 @@ import requests
 from bs4 import BeautifulSoup
 import json
 from datetime import datetime, time
-import ftplib
-import xml.etree.ElementTree as ET
 
 # Intents
 intents = discord.Intents.default()
@@ -18,13 +16,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 NITRADO_API_TOKEN = os.getenv("NITRADO_API_TOKEN")
 NITRADO_SERVICE_ID = os.getenv("NITRADO_SERVICE_ID")
 REPORT_CHANNEL_ID = int(os.getenv("REPORT_CHANNEL_ID", "0"))
-
-# FTP pour savegame
-FTP_HOST = os.getenv("FTP_HOST")
-FTP_PORT = int(os.getenv("FTP_PORT", 21))
-FTP_USER = os.getenv("FTP_USER")
-FTP_PASS = os.getenv("FTP_PASS")
-SAVE_SLOT = os.getenv("SAVE_SLOT", "1")  # "1" pour SAUVEGARDE 1
 
 # Headers Nitrado
 headers = {"Authorization": f"Bearer {NITRADO_API_TOKEN}"}
@@ -94,65 +85,6 @@ async def scrape_new_mods():
     except Exception as e:
         return [f"Erreur scraping ModHub : {str(e)}"]
 
-async def get_save_info():
-    if not all([FTP_HOST, FTP_USER, FTP_PASS]):
-        return "Erreur : Identifiants FTP manquants (vérifie Portainer)."
-    
-    try:
-        ftp = ftplib.FTP()
-        ftp.connect(FTP_HOST, FTP_PORT)
-        ftp.login(FTP_USER, FTP_PASS)
-        
-        # Debug : listing racine FTP (dossier mods)
-        print("=== Contenu racine FTP (dossier mods) ===")
-        ftp.dir()
-        print("=== Fin contenu ===")
-        
-        # Chemin corrigé : remonte du dossier mods vers le parent, puis dans SAUVEGARDE
-        save_path = f"../SAUVEGARDE {SAVE_SLOT}/"
-        ftp.cwd(save_path)
-        print(f"Accès réussi à {save_path}")
-        
-        # farms.xml
-        farms_data = []
-        ftp.retrlines('RETR farms.xml', farms_data.append)
-        farms_content = '\n'.join(farms_data)
-        farms_root = ET.fromstring(farms_content)
-        
-        farms = {}
-        total_money = 0
-        for farm in farms_root.findall('farm'):
-            fid = farm.get('farmId')
-            name = farm.get('name', f"Ferme {fid}")
-            money = float(farm.get('money', 0))
-            farms[fid] = {'name': name, 'money': money}
-            total_money += money
-        
-        # careerSavegame.xml
-        career_data = []
-        ftp.retrlines('RETR careerSavegame.xml', career_data.append)
-        career_content = '\n'.join(career_data)
-        career_root = ET.fromstring(career_content)
-        
-        playtime_elem = career_root.find('.//playTime')
-        playtime = float(playtime_elem.text or 0) if playtime_elem is not None else 0
-        hours = int(playtime)
-        minutes = int((playtime - hours) * 60)
-        
-        ftp.quit()
-        
-        return {
-            'playtime': f"{hours}h {minutes}min",
-            'farms': farms,
-            'total_money': total_money
-        }
-    except ftplib.all_errors as ftp_err:
-        return f"Erreur FTP : {str(ftp_err)} (vérifie que SAVE_SLOT est correct et que SAUVEGARDE existe au parent)"
-    except ET.ParseError:
-        return "Erreur parsing XML : Sauvegarde en cours ? Réessaie dans 5 min."
-    except Exception as e:
-        return f"Erreur inattendue : {str(e)}"
-
 def load_last_mods():
     if os.path.exists(LAST_MODS_FILE):
         try:
@@ -178,12 +110,11 @@ async def send_report():
     
     status = await get_nitrado_status()
     new_mods = await scrape_new_mods()
-    save_info = await get_save_info()
     
     embed = discord.Embed(
         title="**Rapport Quotidien FS25 🌾🚜**",
         description=f"Rapport du {datetime.now().strftime('%d/%m/%Y à %H:%M')} – Tout va bien à la ferme !",
-        color=0x568A3B
+        color=0x568A3B  # Vert champ
     )
     
     embed.add_field(name="🚜 Statut du Serveur Nitrado", value=status, inline=False)
@@ -194,14 +125,6 @@ async def send_report():
         embed.add_field(name=f"🌱 Nouveaux Mods sur ModHub Officiel ({len(new_mods)} aujourd'hui)", value=mods_text, inline=False)
     else:
         embed.add_field(name="🌱 Nouveaux Mods sur ModHub Officiel", value=new_mods[0] if new_mods else "Aucun.", inline=False)
-    
-    # Infos Savegame
-    if isinstance(save_info, dict):
-        farms_text = "\n".join([f"• **{f['name']}** : ${f['money']:,.0f}" for f in save_info['farms'].values()]) or "Aucune ferme"
-        save_text = f"⏱️ Temps de jeu : {save_info['playtime']}\n💵 Argent total : ${save_info['total_money']:,.0f}\n🏡 Fermes :\n{farms_text}"
-        embed.add_field(name="💰 Infos Savegame", value=save_text, inline=False)
-    else:
-        embed.add_field(name="💰 Infos Savegame", value=save_info, inline=False)
     
     embed.set_thumbnail(url="https://farmingsimulator22mods.com/wp-content/uploads/2025/12/new-holland-8340-v1-0-0-1-fs25-1.jpg")
     embed.set_footer(text="Bot FS25 • Prochain rapport demain à 9h")
@@ -238,7 +161,7 @@ async def fs_help(ctx):
         "`!fs_joueurs` → Joueurs connectés\n"
         "`!test_report` → Rapport immédiat\n"
         "`!fs_help` → Ce message\n\n"
-        "Rapport automatique tous les jours à 9h avec statut, mods et savegame !"
+        "Rapport automatique tous les jours à 9h avec statut et nouveaux mods !"
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
