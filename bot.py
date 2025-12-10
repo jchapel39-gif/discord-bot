@@ -24,7 +24,7 @@ FTP_HOST = os.getenv("FTP_HOST")
 FTP_PORT = int(os.getenv("FTP_PORT", 21))
 FTP_USER = os.getenv("FTP_USER")
 FTP_PASS = os.getenv("FTP_PASS")
-SAVE_SLOT = os.getenv("SAVE_SLOT", "1")  # ex. "1" pour SAUVEGARDE 1
+SAVE_SLOT = os.getenv("SAVE_SLOT", "1")  # "1" pour SAUVEGARDE 1
 
 # Headers Nitrado
 headers = {"Authorization": f"Bearer {NITRADO_API_TOKEN}"}
@@ -103,9 +103,33 @@ async def get_save_info():
         ftp.connect(FTP_HOST, FTP_PORT)
         ftp.login(FTP_USER, FTP_PASS)
         
-        # Chemin corrigé : remonte d'un dossier depuis /mods/ puis va dans SAUVEGARDE
-        save_path = f"../../SAUVEGARDE {SAVE_SLOT}/"
-        ftp.cwd(save_path)
+        # Debug : lister le contenu de la racine FTP
+        print("=== Contenu de la racine FTP ===")
+        ftp.dir()
+        print("=== Fin contenu FTP ===")
+        
+        # Chemins possibles pour SAUVEGARDE (Nitrado varie souvent)
+        possible_paths = [
+            f"SAUVEGARDE {SAVE_SLOT}/",
+            f"../SAUVEGARDE {SAVE_SLOT}/",
+            f"../../SAUVEGARDE {SAVE_SLOT}/",
+            f"/SAUVEGARDE {SAVE_SLOT}/",
+            f"./SAUVEGARDE {SAVE_SLOT}/",
+        ]
+        
+        save_path = None
+        for path in possible_paths:
+            try:
+                ftp.cwd(path)
+                print(f"Chemin SAUVEGARDE trouvé : {path}")
+                save_path = path
+                break
+            except ftplib.error_perm:
+                continue
+        
+        if not save_path:
+            ftp.quit()
+            return "Dossier SAUVEGARDE non trouvé. Vérifie les logs Portainer pour le contenu FTP."
         
         # farms.xml
         farms_data = []
@@ -141,7 +165,7 @@ async def get_save_info():
             'total_money': total_money
         }
     except ftplib.all_errors as ftp_err:
-        return f"Erreur FTP : {str(ftp_err)} (mauvais chemin ? Essaie ../../ si ../ ne marche pas)"
+        return f"Erreur FTP : {str(ftp_err)}"
     except ET.ParseError:
         return "Erreur parsing XML : Sauvegarde en cours ? Réessaie dans 5 min."
     except Exception as e:
@@ -236,4 +260,3 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
-
