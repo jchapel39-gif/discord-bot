@@ -4,7 +4,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import json
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 
 # Intents
 intents = discord.Intents.default()
@@ -110,12 +110,9 @@ async def send_report():
     
     status = await get_nitrado_status()
     new_mods = await scrape_new_mods()
-
-    local_time = datetime.now() + timedelta(hours=1)
     
     embed = discord.Embed(
         title="**Rapport Quotidien FS25 🌾🚜**",
-        local_time = datetime.now() + timedelta(hours=1)
         description=f"Rapport du {datetime.now().strftime('%d/%m/%Y à %H:%M')} – Tout va bien à la ferme !",
         color=0x568A3B  # Vert champ
     )
