@@ -2,14 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Copier les fichiers
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie explicite du bot.py
-COPY bot.py .
+COPY . .
 
-# Debug : liste les fichiers présents dans /app (apparaîtra dans les logs du BUILD)
-RUN ls -la /app
-
-# Commande de démarrage
+# Lancer le bot
 CMD ["python", "bot.py"]
+
