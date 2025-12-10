@@ -1,5 +1,7 @@
+version: '3.8'
+
 services:
   bot:
     build: .
-    container_name: discord-bot
+    container_name: mon-bot-discord
     restart: unless-stopped
