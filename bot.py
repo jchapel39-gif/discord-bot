@@ -80,30 +80,25 @@ async def fs_status(ctx):
 
 # --- Infos savegame via FTP ---
 async def get_save_info():
-    if not all([FTP_HOST, FTP_USER, FTP_PASS, SAVE_PATH]):
-        return "Erreur : Infos FTP manquantes."
     try:
-        ftp = ftplib.FTP()
-        ftp.connect(FTP_HOST, FTP_PORT)
-        ftp.login(FTP_USER, FTP_PASS)
-        ftp.cwd(SAVE_PATH)
+        save_dir = "/fs25_save/FarmingSimulator2025/savegame1"  # Chemin partagé via le volume
         
-        # careerSavegame.xml
-        career_data = []
-        ftp.retrlines('RETR careerSavegame.xml', career_data.append)
-        career_content = '\n'.join(career_data)
-        career_root = ET.fromstring(career_content)
+        career_path = os.path.join(save_dir, "careerSavegame.xml")
+        if not os.path.exists(career_path):
+            return "careerSavegame.xml non trouvé (serveur pas lancé ou sauvegarde vide ?)"
+        
+        career_root = ET.parse(career_path).getroot()
         playtime_elem = career_root.find('.//playTime')
         playtime = float(playtime_elem.text or 0) if playtime_elem is not None else 0
         hours = int(playtime)
-        minutes = int((playtime - hours) * 60)  # ← Parenthèse fermée ici !
+        minutes = int((playtime - hours) * 60)
         playtime_str = f"{hours}h {minutes}min"
         
-        # farms.xml
-        farms_data = []
-        ftp.retrlines('RETR farms.xml', farms_data.append)
-        farms_content = '\n'.join(farms_data)
-        farms_root = ET.fromstring(farms_content)
+        farms_path = os.path.join(save_dir, "farms.xml")
+        if not os.path.exists(farms_path):
+            return "farms.xml non trouvé."
+        
+        farms_root = ET.parse(farms_path).getroot()
         
         farms = {}
         total_money = 0
@@ -113,8 +108,6 @@ async def get_save_info():
             money = float(farm.get('money', 0))
             farms[name] = money
             total_money += money
-        
-        ftp.quit()
         
         return {
             'playtime': playtime_str,
@@ -277,3 +270,4 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
