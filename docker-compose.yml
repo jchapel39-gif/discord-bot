@@ -9,5 +9,6 @@ services:
       NITRADO_API_TOKEN:
       NITRADO_SERVICE_ID:
     volumes:
-      - config:/opt/fs25/config
+      - /var/lib/docker/volumes/fs25-server_config/_data
+
 
