@@ -271,7 +271,64 @@ async def fs_help(ctx):
         "Rapport automatique tous les jours à 9h avec tout !"
     )
 
+# --- Détection connexions/déconnexions en temps réel ---
+previous_players = set()
+
+@tasks.loop(seconds=10)  # Toutes les 10 secondes (ajuste si tu veux plus rapide)
+async def player_monitor():
+    global previous_players
+    
+    if REPORT_CHANNEL_ID == 0:
+        return
+    
+    channel = bot.get_channel(REPORT_CHANNEL_ID)
+    if not channel:
+        return
+    
+    try:
+        stats_path = "/fs25_save/FarmingSimulator2025/dedicated_server/gameStats.xml"
+        if not os.path.exists(stats_path):
+            return
+        
+        root = ET.parse(stats_path).getroot()
+        
+        current_players = set()
+        player_names = {}
+        for player in root.findall('.//Slots/Player'):
+            if player.get('isUsed') == "true":
+                name = player.text.strip() if player.text else "Inconnu"
+                current_players.add(name)
+                player_names[name] = player.get('uptime', '0')  # uptime en minutes
+        
+        # Détections
+        new_players = current_players - previous_players
+        left_players = previous_players - current_players
+        
+        for player in new_players:
+            await channel.send(f"**{player}** a rejoint la ferme ! 👋🌾")
+        
+        for player in left_players:
+            uptime = player_names.get(player, '0')
+            hours = int(uptime) // 60
+            minutes = int(uptime) % 60
+            uptime_str = f"{hours}h {minutes}min" if hours > 0 else f"{minutes}min"
+            await channel.send(f"**{player}** a quitté après {uptime_str} de farming 👋")
+        
+        previous_players = current_players.copy()
+        
+    except Exception as e:
+        print(f"Erreur player monitor : {e}")
+
+@bot.event
+async def on_ready():
+    print(f"{bot.user} est connecté ! Bot FS25 local activé.")
+    if not daily_report.is_running():
+        daily_report.start()
+    if not player_monitor.is_running():
+        player_monitor.start()  # Démarre la surveillance joueurs
+
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
