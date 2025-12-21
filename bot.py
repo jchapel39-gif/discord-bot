@@ -36,12 +36,13 @@ async def ping(ctx):
 # --- Statut serveur + joueurs + mods via interface web ---
 async def get_server_status():
     try:
-        response = requests.get(f"{WEB_URL}/link.xml", auth=HTTPBasicAuth(WEB_USER, WEB_PASS), timeout=10)
+        # Lien XML donné par l’interface web
+        xml_url = "http://172.19.0.2:7999/efs/dedicated-server-stats.xml?code=f135071b15069910c08a6606c41bec43"
+        response = requests.get(xml_url, timeout=10)
         response.raise_for_status()
         root = ET.fromstring(response.content)
         
-        status = "En ligne" if root.find('.//slots') is not None else "Hors ligne"
-        
+        # Joueurs avec noms
         players = []
         for player in root.findall('.//player'):
             name = player.find('name').text if player.find('name') is not None else "Inconnu"
@@ -49,34 +50,26 @@ async def get_server_status():
         players_text = ", ".join(players) if players else "Aucun"
         players_count = len(players)
         
+        # Mods installés
         mods = []
         for mod in root.findall('.//mod'):
-            name = mod.find('name').text if mod.find('name') is not None else "Inconnu"
+            name = mod.find('title').text if mod.find('title') is not None else "Inconnu"
             version = mod.find('version').text if mod.find('version') is not None else ""
             mods.append(f"{name} (v{version})")
         mods_text = "\n".join(mods[:20]) + ("\n... et plus" if len(mods) > 20 else "")
         
+        # Mini-map (optionnel pour embed)
+        map_url = "http://172.19.0.2:7999/efs/dedicated-server-stats.map.jpg?code=f135071b15069910c08a6606c41bec43&quality=60&size=512"
+        
         return {
-            'status': status,
             'players_count': players_count,
             'players_names': players_text,
             'mods': mods_text,
-            'mods_count': len(mods)
+            'mods_count': len(mods),
+            'map_url': map_url
         }
     except Exception as e:
-        return {'error': f"Erreur accès serveur : {str(e)}"}
-
-@bot.command()
-async def fs_status(ctx):
-    info = await get_server_status()
-    if 'error' in info:
-        await ctx.send(info['error'])
-    else:
-        embed = discord.Embed(title="**Statut Serveur FS25 Local**", color=0x568A3B)
-        embed.add_field(name="Statut", value=info['status'], inline=False)
-        embed.add_field(name="Joueurs", value=f"{info['players_count']} connectés\n{info['players_names']}", inline=False)
-        embed.add_field(name="Mods installés", value=f"{info['mods_count']} mods\n{info['mods']}", inline=False)
-        await ctx.send(embed=embed)
+        return {'error': f"Erreur lecture API web : {str(e)}"}
 
 # --- Infos savegame via FTP ---
 async def get_save_info():
@@ -270,5 +263,6 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
