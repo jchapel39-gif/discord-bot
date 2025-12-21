@@ -207,23 +207,30 @@ async def send_report():
         color=0x568A3B
     )
     
+    # Statut + joueurs + mods serveur (avec gestion d'erreur)
     if 'error' in server_info:
-        embed.add_field(name="Serveur", value=server_info['error'], inline=False)
+        embed.add_field(name="🚜 Serveur FS25 Local", value=server_info['error'], inline=False)
     else:
         embed.add_field(name="Statut", value=server_info['status'], inline=True)
         embed.add_field(name="Joueurs", value=f"{server_info['players_count']} connectés\n{server_info['players_names']}", inline=True)
         embed.add_field(name="Mods serveur", value=f"{server_info['mods_count']} installés", inline=True)
     
+    # Savegame
     if isinstance(save_info, dict):
         farms_text = "\n".join([f"• **{name}** : ${money:,.0f}" for name, money in save_info['farms'].items()]) or "Aucune ferme"
         embed.add_field(name="💰 Savegame", value=f"⏱️ Temps de jeu : {save_info['playtime']}\n💵 Argent total : ${save_info['total_money']:,.0f}\n🏡 Fermes :\n{farms_text}", inline=False)
     else:
         embed.add_field(name="💰 Savegame", value=save_info, inline=False)
     
+    # Nouveaux mods ModHub
     if new_mods and not new_mods[0].startswith("Aucun"):
         embed.add_field(name=f"🌱 Nouveaux Mods ModHub ({len(new_mods)} aujourd'hui)", value="\n\n".join(new_mods[:10]), inline=False)
     else:
         embed.add_field(name="🌱 Nouveaux Mods ModHub", value="Aucun aujourd'hui", inline=False)
+    
+    # Mini-map (si disponible)
+    if 'map_url' in server_info:
+        embed.set_image(url=server_info['map_url'])
     
     embed.set_thumbnail(url="https://farmingsimulator22mods.com/wp-content/uploads/2025/12/new-holland-8340-v1-0-0-1-fs25-1.jpg")
     embed.set_footer(text="Bot FS25 Local • Prochain rapport demain à 9h")
@@ -261,6 +268,7 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
