@@ -36,8 +36,7 @@ async def ping(ctx):
 # --- Statut serveur + joueurs + mods via interface web ---
 async def get_server_status():
     try:
-        # Utilise host.docker.internal pour accéder à l’hôte depuis le conteneur
-        xml_url = "http://host.docker.internal:7999/efs/dedicated-server-stats.xml?code=f135071b15069910c08a6606c41bec43"
+        xml_url = "http://192.168.1.59:7999/efs/dedicated-server-stats.xml?code=f135071b15069910c08a6606c41bec43"
         response = requests.get(xml_url, timeout=10)
         response.raise_for_status()
         root = ET.fromstring(response.content)
@@ -59,7 +58,7 @@ async def get_server_status():
         mods_text = "\n".join(mods[:20]) + ("\n... et plus" if len(mods) > 20 else "")
         
         # Mini-map
-        map_url = "http://host.docker.internal:7999/efs/dedicated-server-stats.map.jpg?code=f135071b15069910c08a6606c41bec43&quality=60&size=512"
+        map_url = "http://192.168.1.59:7999/efs/dedicated-server-stats.map.jpg?code=f135071b15069910c08a6606c41bec43&quality=60&size=512"
         
         return {
             'players_count': players_count,
@@ -262,6 +261,7 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
