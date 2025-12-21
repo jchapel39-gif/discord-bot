@@ -36,39 +36,43 @@ async def ping(ctx):
 # --- Statut serveur + joueurs + mods via interface web ---
 async def get_server_status():
     try:
-        xml_url = "http://192.168.1.59:7999/feed/dedicated-server-stats.xml?code=f135071b15069910c08a6606c41bec43"
-        response = requests.get(xml_url, timeout=10)
-        response.raise_for_status()
-        root = ET.fromstring(response.content)
+        stats_path = "/fs25_save/FarmingSimulator2025/dedicated_server/gameStats.xml"
+        
+        if not os.path.exists(stats_path):
+            return {'error': "gameStats.xml non trouvé (serveur pas lancé ou pas de partie ?)"}
+        
+        root = ET.parse(stats_path).getroot()
+        
+        # Statut
+        status = "En ligne" if root.find('.//Slots') is not None else "Hors ligne"
         
         # Joueurs avec noms
         players = []
-        for player in root.findall('.//player'):
-            name = player.find('name').text if player.find('name') is not None else "Inconnu"
-            players.append(name)
+        for player in root.findall('.//Slots/Player'):
+            if player.get('isUsed') == "true":
+                name = player.text.strip() if player.text else "Inconnu"
+                players.append(name)
         players_text = ", ".join(players) if players else "Aucun"
         players_count = len(players)
         
         # Mods installés
         mods = []
-        for mod in root.findall('.//mod'):
-            name = mod.find('title').text if mod.find('title') is not None else "Inconnu"
-            version = mod.find('version').text if mod.find('version') is not None else ""
-            mods.append(f"{name} (v{version})")
+        for mod in root.findall('.//Mods/Mod'):
+            name = mod.get('name', "Inconnu")
+            version = mod.get('version', "")
+            author = mod.get('author', "")
+            mods.append(f"{name} (v{version} par {author})")
         mods_text = "\n".join(mods[:20]) + ("\n... et plus" if len(mods) > 20 else "")
         
-        # Mini-map
-        map_url = "http://192.168.1.59:7999/feed/dedicated-server-stats-map.jpg?code=f135071b15069910c08a6606c41bec43&quality=60&size=512"
-        
         return {
+            'status': status,
             'players_count': players_count,
             'players_names': players_text,
             'mods': mods_text,
-            'mods_count': len(mods),
-            'map_url': map_url
+            'mods_count': len(mods)
         }
     except Exception as e:
-        return {'error': f"Erreur lecture API web : {str(e)}"}
+        return {'error': f"Erreur lecture gameStats.xml : {str(e)}"}
 # --- Infos savegame via FTP ---
 async def get_save_info():
     try:
@@ -268,6 +272,7 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
