@@ -10,7 +10,8 @@ services:
       WEB_USER:
       WEB_PASS:
     volumes:
-      - /var/lib/docker/volumes/fs25-server_config/_data
+      - /var/lib/docker/volumes/fs25-server_config/_data:/fs25_save
+
 
 
 
