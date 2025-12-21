@@ -8,3 +8,6 @@ services:
       REPORT_CHANNEL_ID:
       NITRADO_API_TOKEN:
       NITRADO_SERVICE_ID:
+    volumes:
+      - config:/opt/fs25/config
+
