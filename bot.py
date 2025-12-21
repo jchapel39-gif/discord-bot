@@ -81,7 +81,7 @@ async def fs_status(ctx):
 # --- Infos savegame via FTP ---
 async def get_save_info():
     try:
-        save_dir = "/fs25_save/FarmingSimulator2025/savegame1"  # Chemin partagé via le volume
+        save_dir = "/fs25_save/FarmingSimulator2025/savegame1"  # Chemin monté dans le conteneur bot
         
         career_path = os.path.join(save_dir, "careerSavegame.xml")
         if not os.path.exists(career_path):
@@ -270,4 +270,5 @@ async def fs_help(ctx):
     )
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
