@@ -6,9 +6,12 @@ services:
     environment:
       DISCORD_TOKEN:
       REPORT_CHANNEL_ID:
-      NITRADO_API_TOKEN:
-      NITRADO_SERVICE_ID:
+      WEB_URL:
+      WEB_USER:
+      WEB_PASS:
+      SAVE_PATH:
     volumes:
       - /var/lib/docker/volumes/fs25-server_config/_data
+
 
 
