@@ -271,12 +271,12 @@ async def fs_help(ctx):
         "Rapport automatique tous les jours à 9h avec tout !"
     )
 
-# --- Détection connexions/déconnexions en temps réel ---
-previous_players = set()
+# --- Surveillance connexions/déconnexions avec uptime précis ---
+player_join_time = {}  # Dictionnaire global : joueur → timestamp de connexion
 
-@tasks.loop(seconds=10)  # Toutes les 10 secondes (ajuste si tu veux plus rapide)
+@tasks.loop(seconds=10)
 async def player_monitor():
-    global previous_players
+    global player_join_time
     
     if REPORT_CHANNEL_ID == 0:
         return
@@ -293,28 +293,26 @@ async def player_monitor():
         root = ET.parse(stats_path).getroot()
         
         current_players = set()
-        player_names = {}
         for player in root.findall('.//Slots/Player'):
             if player.get('isUsed') == "true":
                 name = player.text.strip() if player.text else "Inconnu"
                 current_players.add(name)
-                player_names[name] = player.get('uptime', '0')  # uptime en minutes
+                
+                # Si nouveau joueur, enregistre l'heure de connexion
+                if name not in player_join_time:
+                    player_join_time[name] = datetime.now()
+                    await channel.send(f"**{name}** a rejoint la ferme ! 👋🌾")
         
-        # Détections
-        new_players = current_players - previous_players
-        left_players = previous_players - current_players
-        
-        for player in new_players:
-            await channel.send(f"**{player}** a rejoint la ferme ! 👋🌾")
-        
-        for player in left_players:
-            uptime = player_names.get(player, '0')
-            hours = int(uptime) // 60
-            minutes = int(uptime) % 60
+        # Joueurs qui ont quitté
+        left_players = set(player_join_time.keys()) - current_players
+        for name in left_players:
+            join_time = player_join_time[name]
+            duration = datetime.now() - join_time
+            hours = duration.seconds // 3600
+            minutes = (duration.seconds % 3600) // 60
             uptime_str = f"{hours}h {minutes}min" if hours > 0 else f"{minutes}min"
-            await channel.send(f"**{player}** a quitté après {uptime_str} de farming 👋")
-        
-        previous_players = current_players.copy()
+            await channel.send(f"**{name}** a quitté après {uptime_str} de farming 👋")
+            del player_join_time[name]  # Nettoyage mémoire
         
     except Exception as e:
         print(f"Erreur player monitor : {e}")
@@ -325,9 +323,10 @@ async def on_ready():
     if not daily_report.is_running():
         daily_report.start()
     if not player_monitor.is_running():
-        player_monitor.start()  # Démarre la surveillance joueurs
+        player_monitor.start()
 
 bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
