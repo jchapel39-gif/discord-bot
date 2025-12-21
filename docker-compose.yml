@@ -9,9 +9,9 @@ services:
       WEB_URL:
       WEB_USER:
       WEB_PASS:
-      SAVE_PATH:
     volumes:
       - /var/lib/docker/volumes/fs25-server_config/_data
+
 
 
 
