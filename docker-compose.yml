@@ -1,0 +1,7 @@
+services:
+  adminarma3:
+    build: .
+    container_name: adminarma3
+    restart: unless-stopped
+    env_file:
+      - .env
