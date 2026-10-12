@@ -3,5 +3,6 @@ services:
     build: .
     container_name: adminarma3
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      TICKET_PREFIX: ${TICKET_PREFIX:-demande-de-ticket}
