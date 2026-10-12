@@ -1,8 +1,0 @@
-services:
-  adminarma3:
-    build: .
-    container_name: adminarma3
-    restart: unless-stopped
-    environment:
-      DISCORD_TOKEN: ${DISCORD_TOKEN}
-      TICKET_PREFIX: ${TICKET_PREFIX:-demande-de-ticket}
