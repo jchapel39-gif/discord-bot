@@ -1,0 +1,9 @@
+services:
+  adminarma3:
+    build: .
+    container_name: adminarma3
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      TICKET_MATCH: ${TICKET_MATCH:-ticket}
+      MOD_ROLE_ID: ${MOD_ROLE_ID:-}
